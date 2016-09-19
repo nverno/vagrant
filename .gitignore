@@ -1,0 +1,6 @@
+*.elc 
+test.el
+TAGS
+.dir-locals.el
+*loaddefs.el
+*autoloads.el
