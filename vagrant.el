@@ -36,21 +36,22 @@
   "Vagrant box management tools for emacs."
   :group 'external)
 
-(defcustom vagrant-commands
-  '("box" "connect" "destroy" "docker-logs" "docker-run"
-    "halt" "init" "list-commands" "login" "package" "plugin"
-    "provision" "rdp" "reload" "resume" "rsync" "rsync-auto" "snapshot"
-    "share" "ssh" "ssh-config" "status" "suspend" "up")
-  "List of vagrant commands to call interactively."
-  :group 'vagrant
-  :type (repeat 'string))
+(eval-and-compile
+  (defcustom vagrant-commands
+    '("box" "connect" "destroy" "docker-logs" "docker-run"
+      "halt" "init" "list-commands" "login" "package" "plugin"
+      "provision" "rdp" "reload" "resume" "rsync" "rsync-auto" "snapshot"
+      "share" "ssh" "ssh-config" "status" "suspend" "up")
+    "List of vagrant commands to call interactively."
+    :type 'sexp
+    :group 'vagrant)
 
-(defcustom vagrant-global-commands
-  '("global-status" "version" "help")
-  "List of vagrant commands to call interactively that don't require 
+  (defcustom vagrant-global-commands
+    '("global-status" "version" "help")
+    "List of vagrant commands to call interactively that don't require 
 locating vagrant root directory for project."
-  :group 'vagrant
-  :type (repeat 'string))
+    :type 'sexp
+    :group 'vagrant))
 
 (defcustom vagrant-completing-read 'ido-completing-read
   "Completion engine to use."
