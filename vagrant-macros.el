@@ -44,9 +44,10 @@ is not searched for."
                     (or (and (consp vagrant-default-args)
                              (mapconcat 'identity
                                         vagrant-default-args " "))
-                        vagrant-default-args)))
+                        vagrant-default-args)
+                  ""))
          (fn-doc (concat "Call 'vagrant " cmd "'"
-                         (when vargs
+                         (when (not (string= vargs ""))
                            (format " (with default arguments: %s)" vargs))
                          ".")))
     `(defun ,fn (&optional args)
@@ -62,20 +63,23 @@ is not searched for."
                           "Vagrant box: " (vagrant-list-boxes))
                        (car (vagrant-list-boxes))))))
          (args (if (equal current-prefix-arg '(16))
-                   (read-string "Args: ") ""
-                 ;; (and args (mapconcat 'identity args " "))
-                 )))
+                   (read-string "Args: ")
+                 ,vargs))
+         (buff (prog1 (get-buffer-create "*Vagrant*")
+                 (with-current-buffer "*Vagrant*"
+                   (let ((inhibit-read-only t))
+                     (erase-buffer))))))
         ,@(when (not nosearch)
             '((unless name
                 (user-error "Unable to find vagrant boxes"))))
-        (message (concat "vagrant " ,cmd ,@(when (not nosearch)
-                                     '((when name (concat " " name)))) " "
-                 (or args ,vargs)))
-        (async-shell-command
-         (concat "vagrant " ,cmd ,@(when (not nosearch)
-                                     '((when name (concat " " name)))) " "
-                 (or args ,vargs)) "*Vagrant*")))))
-
+        (let ((command (concat "vagrant "
+                               ,cmd " "
+                               ,@(when (not nosearch) '((when name (concat name " "))))
+                               args)))
+          (message "Running %s" command)
+          (async-shell-command command buff)
+          (switch-to-buffer buff)
+          (vagrant-mode))))))
 
 (provide 'vagrant-macros)
 

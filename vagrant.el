@@ -39,7 +39,7 @@
 (eval-and-compile
   (defcustom vagrant-commands
     '("box" "connect" "destroy" "docker-logs" "docker-run"
-      "halt" "init" "list-commands" "login" "package" "plugin"
+      "halt" "login" "package" "plugin"
       "provision" "rdp" "reload" "resume" "rsync" "rsync-auto" "snapshot"
       "share" "ssh" "ssh-config" "status" "suspend" "up")
     "List of vagrant commands to call interactively."
@@ -47,7 +47,7 @@
     :group 'vagrant)
 
   (defcustom vagrant-global-commands
-    '("global-status" "version" "help")
+    '("global-status" "version" "help" "list-commands" "init")
     "List of vagrant commands to call interactively that don't require 
 locating vagrant root directory for project."
     :type 'sexp
@@ -91,39 +91,61 @@ locating vagrant root directory for project."
 (vagrant-cmds vagrant-commands)
 
 ;; ------------------------------------------------------------
-;;* shell
+;;* Note: windows needs process-coding utf-8-unix otherwise there is a
+;;  trailing '\r' in ssh
 
-(declare-function comint-send-input "shell")
-
-(defun vagrant-comint-sender (proc string)
-  (comint-send-string
-   proc
-   (concat (replace-regexp-in-string "[\n\r]+$" "\n" string) "\n")))
-
-(defun vagrant-comint-filter (string)
-  (replace-regexp-in-string "[\n\r]+$" "\n" string))
-
-(defun vagrant-send-input ()
-  (interactive)
-  (let* ((proc (get-buffer-process (current-buffer)))
-         (pmark (process-mark proc))
-         (str (comint-get-old-input-default)))
-    (unless (string= str "")
-      (process-send-string proc (concat str "\n")))))
+(defvar vagrant-menu
+  '("Vagrant"
+    ["Global status" vagrant-global-status t]
+    ["SSH" vagrant-ssh t]
+    ["Help" vagrant-help t]
+    ["Up" vagrant-up t]
+    ["Halt" vagrant-halt t]
+    ["Reload" vagrant-reload t]
+    ["Provision" vagrant-provision t]
+    ["Box" vagrant-box t]
+    ["List command" vagrant-list-commands t]))
 
 (defvar vagrant-mode-map
   (let ((km (make-sparse-keymap)))
-    (define-key km (kbd "RET") 'vagrant-send-input)
+    (easy-menu-define nil km nil vagrant-menu)
+    (define-key km (kbd "<f2> m g") 'vagrant-global-status)
+    (define-key km (kbd "<f2> m s") 'vagrant-ssh)
+    (define-key km (kbd "<f2> m ?") 'vagrant-help)
+    (define-key km (kbd "<f2> m u") 'vagrant-up)
+    (define-key km (kbd "<f2> m h") 'vagrant-halt)
+    (define-key km (kbd "<f2> m r") 'vagrant-reload)
+    (define-key km (kbd "<f2> m b") 'vagrant-box)
+    (define-key km (kbd "<f2> m p") 'vagrant-provision)
+    (define-key km (kbd "<f2> m l") 'vagrant-list-commands)
     km))
 
+(defun vagrant-output-filter (string)
+  "Add a prompt indicator"
+  (concat string "> "))
+
 (define-minor-mode vagrant-mode
-  "Vagrant minor mode."
+  "Vagrant minor mode.
+Commands:\n
+\\{vagrant-mode-map}"
   nil
   :keymap vagrant-mode-map
   :lighter "Vagrant"
-  (setq-local comint-input-sender-no-newline t)
-  (setq-local comint-input-sender (function vagrant-comint-sender))
-  (add-hook 'comint-input-filter-functions 'vagrant-comint-filter nil t))
+  (set-buffer-process-coding-system 'utf-8-unix 'utf-8-unix)
+  (remove-hook 'comint-input-filter-functions 'shell-directory-tracker t)
+  (add-hook 'comint-preoutput-filter-functions 'vagrant-output-filter nil t)
+  (setq-local comint-process-echoes nil)
+  (shell-dirtrack-mode -1))
+
+;; not using
+(defun vagrant-proc-sentinel (p s)
+  (message "%s finished with status: '%s'" p s)
+  (pop-to-buffer "*Vagrant*")
+  (when (get-buffer-process (current-buffer))
+    (shell-mode)
+    (set-buffer-process-coding-system 'utf-8-unix 'utf-8-unix))
+  (vagrant-mode)
+  (goto-char (point-max)))
 
 (provide 'vagrant)
 
