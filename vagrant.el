@@ -68,7 +68,8 @@ locating vagrant root directory for project."
 
 (defun vagrant-locate-vagrantfile (&optional dir)
   "Find Vagrantfile for in parent directories, or prompt."
-  (or vagrant-root
+  (or (and dir (setq vagrant-root (locate-dominating-file dir "Vagrantfile")))
+      vagrant-root
       (setq vagrant-root (locate-dominating-file
                           (or dir default-directory) "Vagrantfile"))
       (let ((msg (if dir
@@ -90,6 +91,22 @@ locating vagrant root directory for project."
 (vagrant-cmds vagrant-global-commands nil t)
 (vagrant-cmds vagrant-commands)
 
+(defun vagrant-open-vagrantfile (&optional dir)
+  (interactive)
+  (let ((dir (or (and dir (vagrant-locate-vagrantfile dir))
+                 (and current-prefix-arg
+                      (vagrant-locate-vagrantfile
+                       (read-directory-name "Directory to search for Vagrantfile: ")))
+                 (vagrant-locate-vagrantfile))))
+    (when dir
+      (find-file (expand-file-name "Vagrantfile" dir)))))
+
+;;;###autoload
+(defun vagrant-vagrant ()
+  "Launch vagrant mode"
+  (interactive)
+  (vagrant-global-status))
+
 ;; ------------------------------------------------------------
 ;;* Note: windows needs process-coding utf-8-unix otherwise there is a
 ;;  trailing '\r' in ssh
@@ -98,6 +115,7 @@ locating vagrant root directory for project."
   '("Vagrant"
     ["Global status" vagrant-global-status t]
     ["SSH" vagrant-ssh t]
+    ["Vagrantfile" vagrant-open-vagrantfile t]
     ["Help" vagrant-help t]
     ["Up" vagrant-up t]
     ["Halt" vagrant-halt t]
@@ -118,11 +136,16 @@ locating vagrant root directory for project."
     (define-key km (kbd "<f2> m b") 'vagrant-box)
     (define-key km (kbd "<f2> m p") 'vagrant-provision)
     (define-key km (kbd "<f2> m l") 'vagrant-list-commands)
+    (define-key km (kbd "<f2> m v") 'vagrant-open-vagrantfile)
     km))
 
 (defun vagrant-output-filter (string)
   "Add a prompt indicator"
   (concat string "> "))
+
+(declare-function shell-dirtrack-mode "shell")
+(declare-function shell-mode "shell")
+(defvar comint-process-echoes)
 
 (define-minor-mode vagrant-mode
   "Vagrant minor mode.
@@ -146,6 +169,108 @@ Commands:\n
     (set-buffer-process-coding-system 'utf-8-unix 'utf-8-unix))
   (vagrant-mode)
   (goto-char (point-max)))
+
+;; ------------------------------------------------------------
+;;* List machines
+;;  adapted from https://github.com/emacs-pe/vagrant.el
+
+(cl-defstruct (vagrant-machine (:constructor vagrant-machine--create))
+  id name provider state directory)
+
+(defconst vagrant-global-re
+  "^\\([[:xdigit:]]+\\)\\s-*\\([[:alnum:]_]+\\)\\s-*\\(\\w+\\)\\s-*\\(\\w+\\)\\s-*\\(.*\\)"
+  "Regexp to match `vagrant global-status' output.")
+
+(defvar vagrant-machines nil)
+(defun vagrant--machines (&optional refetch)
+  "Fetch the vagrant machines."
+  (unless (or refetch vagrant-machines)
+    (let* ((str (shell-command-to-string "vagrant global-status"))
+           (start (+ 2 (string-match "-\n" str)))
+           (lines (split-string (substring str start) "\n" nil "\\s-*")))
+      (setq vagrant-machines
+            (cl-loop for line in lines
+               while (not (string= line ""))
+               for value = (split-string line)
+               collect (cl-multiple-value-bind (id name provider state dir) value
+                         (cons id
+                               (vagrant-machine--create
+                                :id id
+                                :name name
+                                :provider provider
+                                :state state
+                                :directory dir)))))))
+  vagrant-machines)
+
+(defun vagrant--generate-table-entry (item)
+  "Generate a tabulate mode entry from an ITEM."
+  (cl-destructuring-bind (id . machine) item
+    (list id (vector (vagrant-machine-id machine)
+                     (vagrant-machine-name machine)
+                     (vagrant-machine-provider machine)
+                     (vagrant-machine-state machine)
+                     (vagrant-machine-directory machine)))))
+
+(defun vagrant--generate-table-entries ()
+  (mapcar #'vagrant--generate-table-entry (vagrant--machines)))
+
+(defun vagrant--machine-read (n)
+  "Read Nth entry of vagrant machine."
+  (if (eq major-mode 'vagrant-machine-mode)
+      (aref (tabulated-list-get-entry) n)
+    (vagrant-completing-read "Vagrant machine id: "
+                             (vagrant--machines)
+                             nil nil nil nil
+                             (tabulated-list-get-id))))
+
+;; ------------------------------------------------------------
+;;* Machine list interactive commands
+
+(vagrant-machine-cmds vagrant-commands)
+
+(defun vagrant-machine-reload-index ()
+  "Reload vagrant machines index."
+  (interactive)
+  (vagrant--machines t))
+
+;;;###autoload
+(defun vagrant-list ()
+  "List vagrant boxes in `vagrant-machine-mode'."
+  (interactive)
+  (with-current-buffer (get-buffer-create "*Vagrant Machines*")
+    (vagrant-machine-mode)
+    (tabulated-list-print)
+    (pop-to-buffer (current-buffer))))
+
+;; ------------------------------------------------------------
+;;* List mode
+
+(defvar vagrant-machine-menu
+  (vagrant-machine-make-menu
+    vagrant-commands
+    ["Reload index" vagrant-machine-reload-index t]))
+
+(defvar vagrant-machine-mode-map
+  (let ((km (make-sparse-keymap)))
+    (easy-menu-define nil km nil vagrant-machine-menu)
+    (define-key km (kbd "u") 'vagrant-machine-up)
+    (define-key km (kbd "s") 'vagrant-machine-ssh)
+    (define-key km (kbd "r") 'vagrant-machine-reload-index)
+    km)
+  "Vagrant machine mode map")
+
+(define-derived-mode vagrant-machine-mode tabulated-list-mode "Vagrant Boxes"
+  "List of vagrant machines.\n
+Commands: \n
+\\{vagrant-machine-map}"
+  (setq tabulated-list-format [("id" 7 nil)
+                               ("name" 10 nil)
+                               ("provider" 10 nil)
+                               ("state" 10 nil)
+                               ("directory" 60 nil)])
+  (add-hook 'tabulated-list-revert-hook 'vagrant-machines-reload nil t)
+  (setq tabulated-list-entries 'vagrant--generate-table-entries)
+  (tabulated-list-init-header))
 
 (provide 'vagrant)
 

@@ -50,21 +50,24 @@ is not searched for."
                          (when (not (string= vargs ""))
                            (format " (with default arguments: %s)" vargs))
                          ".")))
-    `(defun ,fn (&optional args)
+    `(defun ,fn (&optional dir box args)
        ,fn-doc
        (interactive)
        (,(if nosearch 'let 'let*)
         (cons
          ,@(when (not nosearch)
              '((default-directory
-                 (file-name-directory (vagrant-locate-vagrantfile)))
-               (name (if (equal current-prefix-arg '(4))
-                         (vagrant-completing-read
-                          "Vagrant box: " (vagrant-list-boxes))
-                       (car (vagrant-list-boxes))))))
-         (args (if (equal current-prefix-arg '(16))
-                   (read-string "Args: ")
-                 ,vargs))
+                 (or dir 
+                     (file-name-directory (vagrant-locate-vagrantfile))))
+               (name (or box
+                         (and (equal current-prefix-arg '(4))
+                              (vagrant-completing-read
+                               "Vagrant box: " (vagrant-list-boxes)))
+                         (car (vagrant-list-boxes))))))
+         (args (or args
+                   (if (equal current-prefix-arg '(16))
+                       (read-string "Args: ")
+                     ,vargs)))
          (buff (prog1 (get-buffer-create "*Vagrant*")
                  (with-current-buffer "*Vagrant*"
                    (let ((inhibit-read-only t))
@@ -80,6 +83,35 @@ is not searched for."
           (async-shell-command command buff)
           (switch-to-buffer buff)
           (vagrant-mode))))))
+
+;; ------------------------------------------------------------
+;;* vagrant-machine commands, for tabulated list interface
+
+(defmacro vagrant-machine-cmd (cmd)
+  "Create commands to call on boxes in tabulated list."
+  (let* ((cmd (eval cmd))
+         (fn (intern (concat "vagrant-machine-" cmd)))
+         (fn1 (intern (concat "vagrant-" cmd)))
+         (fn-doc (concat "Call 'vagrant " cmd "' on box in tabulated list.")))
+    `(defun ,fn ()
+       ,fn-doc
+       (interactive)
+       (,fn1 (vagrant--machine-read 4)
+             (vagrant--machine-read 1)))))
+
+(defmacro vagrant-machine-cmds (cmds &rest args)
+  (macroexp-progn
+   (cl-loop for c in (eval cmds)
+      collect `(vagrant-machine-cmd ,c ,@args))))
+
+(defmacro vagrant-machine-make-menu (cmds &rest other)
+  "Expand interactive commands into menu"
+  `(quote
+    ,(nconc
+      (cons "Vagrant Machines" nil)
+      other
+      (cl-loop for c in (eval cmds)
+         collect (vector c (intern (concat "vagrant-machine-" c)) t)))))
 
 (provide 'vagrant-macros)
 
