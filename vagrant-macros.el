@@ -104,14 +104,23 @@ is not searched for."
    (cl-loop for c in (eval cmds)
       collect `(vagrant-machine-cmd ,c ,@args))))
 
-(defmacro vagrant-machine-make-menu (cmds &rest other)
+;; ------------------------------------------------------------
+;;* Menus
+
+(defmacro vagrant-make-menu (cmds title prefix &optional global &rest other)
   "Expand interactive commands into menu"
+  (declare (indent defun))
   `(quote
     ,(nconc
-      (cons "Vagrant Machines" nil)
+      (cons title nil)
       other
+      (when global
+        `("--"
+          ,(cl-loop for c in (eval global)
+             collect (vector c (intern (concat prefix c)) t))
+          "--"))
       (cl-loop for c in (eval cmds)
-         collect (vector c (intern (concat "vagrant-machine-" c)) t)))))
+         collect (vector c (intern (concat prefix c)) t)))))
 
 (provide 'vagrant-macros)
 

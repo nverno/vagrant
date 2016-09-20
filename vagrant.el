@@ -38,7 +38,7 @@
 
 (eval-and-compile
   (defcustom vagrant-commands
-    '("box" "connect" "destroy" "docker-logs" "docker-run"
+    '("connect" "destroy" "docker-logs" "docker-run"
       "halt" "login" "package" "plugin"
       "provision" "rdp" "reload" "resume" "rsync" "rsync-auto" "snapshot"
       "share" "ssh" "ssh-config" "status" "suspend" "up")
@@ -47,7 +47,7 @@
     :group 'vagrant)
 
   (defcustom vagrant-global-commands
-    '("global-status" "version" "help" "list-commands" "init")
+    '("box" "global-status" "help" "init" "list-commands" "version")
     "List of vagrant commands to call interactively that don't require 
 locating vagrant root directory for project."
     :type 'sexp
@@ -110,6 +110,11 @@ locating vagrant root directory for project."
 ;; ------------------------------------------------------------
 ;;* Note: windows needs process-coding utf-8-unix otherwise there is a
 ;;  trailing '\r' in ssh
+
+(defvar vagrant-menu
+  (vagrant-make-menu vagrant-commands "Vagrant" "vagrant-" vagrant-global-commands
+    ["Vagrantfile" vagrant-open-vagrantfile t]
+    ))
 
 (defvar vagrant-menu
   '("Vagrant"
@@ -247,8 +252,7 @@ Commands:\n
 ;;* List mode
 
 (defvar vagrant-machine-menu
-  (vagrant-machine-make-menu
-    vagrant-commands
+  (vagrant-make-menu vagrant-commands "Vagrant Machines" "vagrant-machine-" nil
     ["Reload index" vagrant-machine-reload-index t]))
 
 (defvar vagrant-machine-mode-map
@@ -271,6 +275,10 @@ Commands: \n
   (add-hook 'tabulated-list-revert-hook 'vagrant-machine-reload-index nil t)
   (setq tabulated-list-entries 'vagrant--generate-table-entries)
   (tabulated-list-init-header))
+
+;; ------------------------------------------------------------
+;;* Tramp
+
 
 (provide 'vagrant)
 
