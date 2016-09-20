@@ -184,9 +184,9 @@ Commands:\n
 (defvar vagrant-machines nil)
 (defun vagrant--machines (&optional refetch)
   "Fetch the vagrant machines."
-  (unless (or refetch vagrant-machines)
+  (when (or refetch (not vagrant-machines))
     (let* ((str (shell-command-to-string "vagrant global-status"))
-           (lines (nthcdr 2 (split-string str "\n" nil "\\s-*"))))
+           (lines (nthcdr 2 (split-string str "\n" nil " *"))))
       (setq vagrant-machines
             (cl-loop for line in lines
                while (not (string= line ""))
