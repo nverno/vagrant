@@ -38,7 +38,7 @@
 
 (eval-and-compile
   (defcustom vagrant-commands
-    '("box" "connect" "destroy" "docker-logs" "docker-run"
+    '("connect" "destroy" "docker-logs" "docker-run"
       "halt" "login" "package" "plugin"
       "provision" "rdp" "reload" "resume" "rsync" "rsync-auto" "snapshot"
       "share" "ssh" "ssh-config" "status" "suspend" "up")
@@ -47,7 +47,7 @@
     :group 'vagrant)
 
   (defcustom vagrant-global-commands
-    '("global-status" "version" "help" "list-commands" "init")
+    '("box" "global-status" "version" "help" "list-commands" "init")
     "List of vagrant commands to call interactively that don't require 
 locating vagrant root directory for project."
     :type 'sexp
