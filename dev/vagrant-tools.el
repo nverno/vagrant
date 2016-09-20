@@ -1,4 +1,4 @@
-;;; vagrant.el --- Interact with vagrant machines -*- lexical-binding: t; -*-
+;;; vagrant.el --- Interact with vagrant machines -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; Copyright (C) 2014 Mario Rodas <marsam@users.noreply.github.com>
 
@@ -112,11 +112,17 @@
   "Fetch the vagrant machines."
   (unless vagrant-machines-already-fetched
     (setq vagrant-machines-already-fetched t
-          vagrant-machines (cl-loop for line in (cdr (process-lines vagrant-executable "info-index"))
-                                    for value = (split-string line ",")
-                                    collect (cl-multiple-value-bind (id name provider state directory) value
-                                              (cons id
-                                                    (vagrant-machine--create :id id :name name :provider provider :state state :directory directory))))))
+          vagrant-machines
+          (cl-loop for line in (cdr (process-lines vagrant-executable "info-index"))
+             for value = (split-string line ",")
+             collect (cl-multiple-value-bind (id name provider state directory) value
+                       (cons id
+                             (vagrant-machine--create
+                              :id id
+                              :name name
+                              :provider provider
+                              :state state
+                              :directory directory))))))
   vagrant-machines)
 
 (defun vagrant--run-subcommand (&rest args)

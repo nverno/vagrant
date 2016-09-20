@@ -1,4 +1,4 @@
-;;; vagrant-tramp-shell --- vagrant ssh
+;;; vagrant-tramp-shell --- vagrant ssh -*- no-byte-compile: t; -*-
 
 ;; Mixing vagrant-tramp.el and vagrant.el
 

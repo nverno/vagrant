@@ -1,4 +1,4 @@
-;;; vagrant-tramp.el --- Vagrant method for TRAMP
+;;; vagrant-tramp.el --- Vagrant method for TRAMP -*- no-byte-compile: t; -*-
 
 ;; Copyright © 2016  The Vagrant-Tramp Contributors
 

@@ -186,8 +186,7 @@ Commands:\n
   "Fetch the vagrant machines."
   (unless (or refetch vagrant-machines)
     (let* ((str (shell-command-to-string "vagrant global-status"))
-           (start (+ 2 (string-match "-\n" str)))
-           (lines (split-string (substring str start) "\n" nil "\\s-*")))
+           (lines (nthcdr 2 (split-string str "\n" nil "\\s-*"))))
       (setq vagrant-machines
             (cl-loop for line in lines
                while (not (string= line ""))
@@ -231,6 +230,7 @@ Commands:\n
 (defun vagrant-machine-reload-index ()
   "Reload vagrant machines index."
   (interactive)
+  (message "Reloading vagrant machine index...")
   (vagrant--machines t))
 
 ;;;###autoload
@@ -238,6 +238,7 @@ Commands:\n
   "List vagrant boxes in `vagrant-machine-mode'."
   (interactive)
   (with-current-buffer (get-buffer-create "*Vagrant Machines*")
+    (vagrant--machines)
     (vagrant-machine-mode)
     (tabulated-list-print)
     (pop-to-buffer (current-buffer))))
@@ -255,20 +256,19 @@ Commands:\n
     (easy-menu-define nil km nil vagrant-machine-menu)
     (define-key km (kbd "u") 'vagrant-machine-up)
     (define-key km (kbd "s") 'vagrant-machine-ssh)
-    (define-key km (kbd "r") 'vagrant-machine-reload-index)
     km)
   "Vagrant machine mode map")
 
 (define-derived-mode vagrant-machine-mode tabulated-list-mode "Vagrant Boxes"
   "List of vagrant machines.\n
 Commands: \n
-\\{vagrant-machine-map}"
+\\{vagrant-machine-mode-map}"
   (setq tabulated-list-format [("id" 7 nil)
                                ("name" 10 nil)
                                ("provider" 10 nil)
                                ("state" 10 nil)
                                ("directory" 60 nil)])
-  (add-hook 'tabulated-list-revert-hook 'vagrant-machines-reload nil t)
+  (add-hook 'tabulated-list-revert-hook 'vagrant-machine-reload-index nil t)
   (setq tabulated-list-entries 'vagrant--generate-table-entries)
   (tabulated-list-init-header))
 
