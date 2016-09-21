@@ -49,7 +49,8 @@ is not searched for."
          (fn-doc (concat "Call 'vagrant " cmd "'"
                          (when (not (string= vargs ""))
                            (format " (with default arguments: %s)" vargs))
-                         ".")))
+                         ". Single prefix prompts for box (non-global commands), "
+                         "double prefix prompts for additional arguments.")))
     `(defun ,fn (&optional dir box args)
        ,fn-doc
        (interactive)
@@ -71,7 +72,8 @@ is not searched for."
          (buff (prog1 (get-buffer-create "*Vagrant*")
                  (with-current-buffer "*Vagrant*"
                    (let ((inhibit-read-only t))
-                     (erase-buffer))))))
+                     (erase-buffer)))))
+         (root (when (bound-and-true-p vagrant-root) vagrant-root)))
         ,@(when (not nosearch)
             '((unless name
                 (user-error "Unable to find vagrant boxes"))))
@@ -81,7 +83,8 @@ is not searched for."
                                args)))
           (message "Running %s" command)
           (async-shell-command command buff)
-          (switch-to-buffer buff)
+          (pop-to-buffer buff)
+          (setq-local vagrant-root root)
           (vagrant-mode))))))
 
 ;; ------------------------------------------------------------
@@ -111,13 +114,14 @@ is not searched for."
   "Expand interactive commands into menu"
   (declare (indent defun))
   `(quote
-    ,(nconc
+    ,(append
       (cons title nil)
       other
       (when global
-        `("--"
-          ,(cl-loop for c in (eval global)
-             collect (vector c (intern (concat prefix c)) t))
+        `(,@(append
+             '("--")
+             (cl-loop for c in (eval global)
+                collect (vector c (intern (concat prefix c)) t)))
           "--"))
       (cl-loop for c in (eval cmds)
          collect (vector c (intern (concat prefix c)) t)))))

@@ -24,7 +24,14 @@
 
 ;;; Commentary:
 
-;; Manage vagrant boxes / Vagrantfiles from emacs
+;; Manage vagrant boxes / Vagrantfiles from emacs.  Defines two modes,
+;; - vagrant-mode:
+;;   For vagrant-ssh as well as other vagrant commands.
+;; - vagrant-machine-mode:
+;;   Tabulated list interface to available boxes.
+;;
+;; Commands are defined for all vagrant commmands through the corresponding
+;; macros in `vagrant-macros.el'.  There are methods for TRAMP and vagrant ssh.
 
 ;;; Code:
 
@@ -85,6 +92,16 @@ locating vagrant root directory for project."
    (let ((dir (expand-file-name ".vagrant/machines/" root)))
      (delq nil (directory-files dir nil "^[^.]")))))
 
+;; vagrantfile
+
+(defun vagrant-vagrantfile-pn (file)
+  "Retrieve private network ip defined in vagrantfile."
+  (with-temp-buffer
+    (insert-file-contents file)
+    (goto-char (point-min))
+    (when (re-search-forward "private_network.*?\\([0-9.]+\\)" nil t)
+      (match-string-no-properties 1))))
+
 ;; ------------------------------------------------------------
 ;;* Build interactive commmands
 
@@ -92,6 +109,7 @@ locating vagrant root directory for project."
 (vagrant-cmds vagrant-commands)
 
 (defun vagrant-open-vagrantfile (&optional dir)
+  "Open associated vagrantfile."
   (interactive)
   (let ((dir (or (and dir (vagrant-locate-vagrantfile dir))
                  (and current-prefix-arg
@@ -101,9 +119,28 @@ locating vagrant root directory for project."
     (when dir
       (find-file (expand-file-name "Vagrantfile" dir)))))
 
+(defun vagrant-tramp-shell ()
+  "Tramp into private network."
+  (interactive)
+  (let* ((dir (or (and (eq major-mode 'vagrant-machine-mode)
+                       (vagrant--machine-read 4))
+                  (directory-file-name (vagrant-locate-vagrantfile))))
+         (vfile (expand-file-name "Vagrantfile" dir))
+         (name (vagrant-machine-get dir "directory" "name"))
+         (ip (vagrant-vagrantfile-pn vfile)))
+    (when ip
+      (let ((default-directory
+              (format "/%s:vagrant@%s:"
+                      (if (eq system-type 'windows-nt) "plink" "ssh") ip))
+            (explicit-shell-file-name "/bin/bash")
+            (buff (concat "*vagrant:" name "*")))
+        (if (eq system-type 'windows-nt)
+            (shell buff)
+          (ansi-term "/bin/bash" buff))))))
+
 ;;;###autoload
 (defun vagrant-vagrant ()
-  "Launch vagrant mode"
+  "Launch `vagrant-mode'"
   (interactive)
   (vagrant-global-status))
 
@@ -112,26 +149,15 @@ locating vagrant root directory for project."
 ;;  trailing '\r' in ssh
 
 (defvar vagrant-menu
-  (vagrant-make-menu vagrant-commands "Vagrant" "vagrant-" vagrant-global-commands
+  (vagrant-make-menu vagrant-commands "Vagrant" "vagrant-"
+    vagrant-global-commands
     ["Vagrantfile" vagrant-open-vagrantfile t]
-    ))
-
-(defvar vagrant-menu
-  '("Vagrant"
-    ["Global status" vagrant-global-status t]
-    ["SSH" vagrant-ssh t]
-    ["Vagrantfile" vagrant-open-vagrantfile t]
-    ["Help" vagrant-help t]
-    ["Up" vagrant-up t]
-    ["Halt" vagrant-halt t]
-    ["Reload" vagrant-reload t]
-    ["Provision" vagrant-provision t]
-    ["Box" vagrant-box t]
-    ["List command" vagrant-list-commands t]))
+    ["Tramp shell" vagrant-tramp-shell t]))
 
 (defvar vagrant-mode-map
   (let ((km (make-sparse-keymap)))
     (easy-menu-define nil km nil vagrant-menu)
+    (define-key km (kbd "C-z")      'vagrant-tramp-shell)
     (define-key km (kbd "<f2> m g") 'vagrant-global-status)
     (define-key km (kbd "<f2> m s") 'vagrant-ssh)
     (define-key km (kbd "<f2> m ?") 'vagrant-help)
@@ -227,10 +253,35 @@ Commands:\n
                              nil nil nil nil
                              (tabulated-list-get-id))))
 
+(defun vagrant-machine-get-id (value fun)
+  "Retrieve vagrant machine id using retrieval FUN, that matched VALUE."
+  (cl-flet ((fn (intern (concat "vagrant-machine-" fun))))
+   (cl-loop for (id . dat) in vagrant-machines
+      when (string= (downcase value) (downcase (fn dat))) return id)))
+
+(defun vagrant-machine-get (value match-fun ret-fun)
+  "Retrieve vagrant machine value using RET-FUN where there is a match for VALUE
+using retrieval RET-FUN."
+  (cl-flet ((fn (intern (concat "vagrant-machine-" match-fun)))
+            (fn2 (intern (concat "vagrant-machine-" ret-fun))))
+   (cl-loop for (id . dat) in vagrant-machines
+      when (string= (downcase value) (downcase (fn dat)))
+      return (fn2 dat))))
+
+(defun vagrant-machine-invert-index (item)
+  "Return alist keyed by ITEM to id."
+  (cl-flet ((fn (intern (concat "vagrant-machine-" item))))
+    (cl-loop for (id . dat) in vagrant-machines
+       collect (cons (fn dat) id))))
+
 ;; ------------------------------------------------------------
 ;;* Machine list interactive commands
 
 (vagrant-machine-cmds vagrant-commands)
+
+(defun vagrant-machine-vagrantfile (dir)
+  (interactive (list (vagrant--machine-read 4)))
+  (vagrant-open-vagrantfile dir))
 
 (defun vagrant-machine-reload-index ()
   "Reload vagrant machines index."
@@ -252,14 +303,21 @@ Commands:\n
 ;;* List mode
 
 (defvar vagrant-machine-menu
-  (vagrant-make-menu vagrant-commands "Vagrant Machines" "vagrant-machine-" nil
-    ["Reload index" vagrant-machine-reload-index t]))
+  (vagrant-make-menu vagrant-commands "Vagrant Machines" "vagrant-machine-"
+    nil
+    ["Reload index" vagrant-machine-reload-index t]
+    ["Vagrantfile" vagrant-machine-vagrantfile t]
+    ["Tramp shell" vagrant-tramp-shell t]
+    "--"))
 
 (defvar vagrant-machine-mode-map
   (let ((km (make-sparse-keymap)))
     (easy-menu-define nil km nil vagrant-machine-menu)
-    (define-key km (kbd "u") 'vagrant-machine-up)
-    (define-key km (kbd "s") 'vagrant-machine-ssh)
+    (define-key km (kbd "C-z")  'vagrant-tramp-shell)
+    (define-key km (kbd "u")    'vagrant-machine-up)
+    (define-key km (kbd "s")    'vagrant-machine-ssh)
+    (define-key km (kbd "v")    'vagrant-machine-vagrantfile)
+    (define-key km (kbd "h")    'vagrant-machine-halt)
     km)
   "Vagrant machine mode map")
 
@@ -277,8 +335,108 @@ Commands: \n
   (tabulated-list-init-header))
 
 ;; ------------------------------------------------------------
-;;* Tramp
+;;* Tramp methods
 
+(autoload 'tramp-dump-connection-properties "tramp-cache")
+(defvar tramp-cache-data)
+(defvar tramp-cache-data-changed)
+(defvar tramp-methods)
+(declare-function tramp-file-name-method "tramp")
+
+(defvar vagrant-tramp-method "vagrant")
+(defvar vagrant-tramp-config-file
+  (expand-file-name "etc/config/vagrant-tramp-config" "~/.emacs.d"))
+
+(defun vagrant-tramp-add-ssh-config (id)
+  "Add ssh config for machine ID to `vagrant-tramp-config-file'."
+  (interactive 
+   (list
+    (or (and (eq major-mode 'vagrant-machine-mode)
+             (vagrant--machine-read 0))
+        (and vagrant-root
+             (vagrant-machine-get-id (directory-file-name vagrant-root)
+                                     "directory"))
+        (let* ((inv (vagrant-machine-invert-index "name"))
+               (name (vagrant-completing-read "Add ssh-config for machine: " inv)))
+          (cdr (assoc-string name inv))))))
+  (with-temp-buffer
+    (let ((exit-status (call-process
+                       "vagrant" nil (current-buffer) nil "ssh-config" id)))
+     (if (zerop exit-status)
+         (write-region (buffer-string) nil vagrant-tramp-config-file 'append)
+       (error (buffer-string))))))
+
+(defun vagrant-tramp-blank-config (&optional reset)
+  (when (or reset
+            (not (file-exists-p vagrant-tramp-config-file)))
+    (with-temp-file vagrant-tramp-config-file (insert ""))))
+
+(defun vagrant-tramp-cleanup ()
+  "Cleanup vagrant tramp connection info."
+  (interactive)
+  (maphash #'(lambda (key _)
+               (and (vectorp key)
+                    (string= vagrant-tramp-method (tramp-file-name-method key))
+                    (remhash key tramp-cache-data)))
+           tramp-cache-data)
+  (setq tramp-cache-data-changed t)
+  (when (eq current-prefix-arg '(4))
+    (vagrant-tramp-blank-config t))
+  (tramp-dump-connection-properties))
+
+(defun vagrant-tramp-add-plink-method ()
+  (interactive)
+  (add-to-list 'tramp-methods
+               `(,vagrant-tramp-method
+                 (tramp-login-program "plink")
+                 (tramp-login-args
+                  (("-l" "%u")
+                   ("-P" "%p")
+                   ("-ssh")
+                   ("-t")
+                   ("%h")
+                   ("\"")
+                   ("env 'TERM=dumb' 'PROMPT_COMMAND=' 'PS1=#$ '")
+                   ("/bin/bash")
+                   ("\"")))
+                 (tramp-remote-shell "/bin/bash")
+                 (tramp-remote-shell-login
+                  ("-l"))
+                 (tramp-remote-shell-args
+                  ("-c"))
+                 (tramp-default-port 22))))
+
+(defun vagrant-tramp-add-ssh-method ()
+  "Add vagrant method for tramp."
+  (interactive)
+  (add-to-list 'tramp-methods
+               `(,vagrant-tramp-method
+                 (tramp-login-program       "ssh")
+                 (tramp-login-args          (("-l" "%u")
+                                             ("-p" "%p")
+                                             ("%c")
+                                             ("-e" "none")
+                                             ("%h")
+                                             ("-F" ,vagrant-tramp-config-file)))
+                 (tramp-async-args           (("-q")))
+                 (tramp-remote-shell         "/bin/bash")
+                 (tramp-remote-shell-login   ("-l"))
+                 (tramp-remote-shell-args    ("-c"))
+                 (tramp-gw-args              (("-o" "GlobalKnownhostsfile=/dev/null")
+                                              ("-o" "UserKnownHostsFile=/dev/null")
+                                              ("-o" "StrictHostKeyChecking=no")))
+                 (tramp-default-port         22))))
+
+(defconst vagrant-tramp-completion-function-alist
+  `((vagrant-tramp-blank-config ,vagrant-tramp-config-file)
+    (tramp-parse-sconfig        ,vagrant-tramp-config-file))
+  "Alist of (FUNCTION FILE) for vagrant method.")
+
+;; (eval-after-load 'tramp
+;;   '(progn
+;;      (vagrant-tramp-add-plink-method)
+;;      (tramp-set-completion-function vagrant-tramp-method
+;;                                     vagrant-tramp-completion-function-alist)))
 
 (provide 'vagrant)
 
