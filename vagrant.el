@@ -24,14 +24,16 @@
 
 ;;; Commentary:
 
-;; Manage vagrant boxes / Vagrantfiles from emacs.  Defines two modes,
+;; Manages vagrant boxes from emacs.
+
+;; Commands are defined for all vagrant command-line commmands through the corresponding
+;; macros in `vagrant-macros.el'.  There are methods for TRAMP and vagrant ssh.
+
+;;  Also defines two modes,
 ;; - vagrant-mode:
 ;;   For vagrant-ssh as well as other vagrant commands.
 ;; - vagrant-machine-mode:
-;;   Tabulated list interface to available boxes.
-;;
-;; Commands are defined for all vagrant commmands through the corresponding
-;; macros in `vagrant-macros.el'.  There are methods for TRAMP and vagrant ssh.
+;;   List interface to available boxes adapted from [emacs-pe](https://github.com/emacs-pe/vagrant.el)
 
 ;;; Code:
 

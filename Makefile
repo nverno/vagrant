@@ -35,8 +35,8 @@ compile : $(elc)
 $(auto):
 	$(emacs) -batch $(auto_flags)
 
-README.md: el2markdown.el $(el)
-	$(emacs) -batch -l $< $(el) -f el2markdown-write-readme
+README.md: el2markdown.el vagrant.el
+	$(emacs) -batch -l $< vagrant.el -f el2markdown-write-readme
 	$(RM) $@~
 
 .INTERMEDIATE: el2markdown.el
