@@ -83,7 +83,8 @@ is not searched for."
                                args)))
           (message "Running %s" command)
           (async-shell-command command buff)
-          (pop-to-buffer buff)
+          (set-window-buffer (split-window-below) buff)
+          ;; (pop-to-buffer buff)
           (setq-local vagrant-root root)
           (vagrant-mode))))))
 
