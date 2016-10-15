@@ -1,6 +1,8 @@
 *Author:* Noah Peart <noah.v.peart@gmail.com><br>
 *URL:* [https://github.com/nverno/vagrant](https://github.com/nverno/vagrant)<br>
 
+[![Build Status](https://travis-ci.org/nverno/vagrant.svg?branch=master)](https://travis-ci.org/nverno/vagrant)
+
 Manages vagrant boxes from emacs.
 
 Commands are defined for all vagrant command-line commmands through the corresponding

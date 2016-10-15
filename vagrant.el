@@ -24,6 +24,8 @@
 
 ;;; Commentary:
 
+;; [![Build Status](https://travis-ci.org/nverno/vagrant.svg?branch=master)](https://travis-ci.org/nverno/vagrant)
+
 ;; Manages vagrant boxes from emacs.
 
 ;; Commands are defined for all vagrant command-line commmands through the corresponding
