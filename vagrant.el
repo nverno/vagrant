@@ -1,12 +1,12 @@
 ;;; vagrant --- Utilities to manage vagrant from emacs.
 
-;;; Author: Noah Peart <noah.v.peart@gmail.com>
-;;; Copyright (C) 2016, Noah Peart, all rights reserved.
-;;; URL: https://github.com/nverno/vagrant
-;;; Keywords: vagrant docker
-;;; Created: 18 September 2016
+;; This is free and unencumbered software released into the public domain.
 
-;;
+;; Author: Noah Peart <noah.v.peart@gmail.com>
+;; URL: https://github.com/nverno/vagrant
+;; Keywords: vagrant docker
+;; Created: 18 September 2016
+
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
 ;; published by the Free Software Foundation; either version 3, or
@@ -70,7 +70,7 @@ locating vagrant root directory for project."
   :group 'vagrant)
 
 ;; ------------------------------------------------------------
-;;* Internal
+;;; Internal
 
 (defalias 'vagrant-completing-read vagrant-completing-read)
 
@@ -90,7 +90,7 @@ locating vagrant root directory for project."
 
 ;; boxes
 
-(defun vagrant-list-boxes ()
+(defsubst vagrant-list-boxes ()
   "List of vagrant boxes in `vagrant-root'."
   (when-let ((root (vagrant-locate-vagrantfile)))
    (let ((dir (expand-file-name ".vagrant/machines/" root)))
@@ -107,7 +107,7 @@ locating vagrant root directory for project."
       (match-string-no-properties 1))))
 
 ;; ------------------------------------------------------------
-;;* Build interactive commmands
+;;; Build interactive commmands
 
 (vagrant-cmds vagrant-global-commands nil t)
 (vagrant-cmds vagrant-commands)
@@ -149,7 +149,7 @@ locating vagrant root directory for project."
   (vagrant-global-status))
 
 ;; ------------------------------------------------------------
-;;* Note: windows needs process-coding utf-8-unix otherwise there is a
+;;; Note: windows needs process-coding utf-8-unix otherwise there is a
 ;;  trailing '\r' in ssh
 
 (defvar vagrant-menu
@@ -206,8 +206,8 @@ Commands:\n
   (goto-char (point-max)))
 
 ;; ------------------------------------------------------------
-;;* List machines
-;;  adapted from https://github.com/emacs-pe/vagrant.el
+;;; List machines
+;; see https://github.com/emacs-pe/vagrant.el
 
 (cl-defstruct (vagrant-machine (:constructor vagrant-machine--create))
   id name provider state directory)
@@ -222,18 +222,19 @@ Commands:\n
   (when (or refetch (not vagrant-machines))
     (let* ((str (shell-command-to-string "vagrant global-status"))
            (lines (nthcdr 2 (split-string str "\n" nil " *"))))
-      (setq vagrant-machines
-            (cl-loop for line in lines
-               while (not (string= line ""))
-               for value = (split-string line)
-               collect (cl-multiple-value-bind (id name provider state dir) value
-                         (cons id
-                               (vagrant-machine--create
-                                :id id
-                                :name name
-                                :provider provider
-                                :state state
-                                :directory dir)))))))
+      (unless (string-prefix-p "There are no" (car lines))
+        (setq vagrant-machines
+              (cl-loop for line in lines
+                 while (not (string= line ""))
+                 for value = (split-string line)
+                 collect (cl-multiple-value-bind (id name provider state dir) value
+                           (cons id
+                                 (vagrant-machine--create
+                                  :id id
+                                  :name name
+                                  :provider provider
+                                  :state state
+                                  :directory dir))))))))
   vagrant-machines)
 
 (defun vagrant--generate-table-entry (item)
@@ -245,7 +246,7 @@ Commands:\n
                      (vagrant-machine-state machine)
                      (vagrant-machine-directory machine)))))
 
-(defun vagrant--generate-table-entries ()
+(defsubst vagrant--generate-table-entries ()
   (mapcar #'vagrant--generate-table-entry (vagrant--machines)))
 
 (defun vagrant--machine-read (n)
@@ -279,7 +280,7 @@ using retrieval RET-FUN."
        collect (cons (fn dat) id))))
 
 ;; ------------------------------------------------------------
-;;* Machine list interactive commands
+;;; Machine list interactive commands
 
 (vagrant-machine-cmds vagrant-commands)
 
@@ -304,7 +305,7 @@ using retrieval RET-FUN."
     (pop-to-buffer (current-buffer))))
 
 ;; ------------------------------------------------------------
-;;* List mode
+;;; List mode
 
 (defvar vagrant-machine-menu
   (vagrant-make-menu vagrant-commands "Vagrant Machines" "vagrant-machine-"
@@ -339,7 +340,7 @@ Commands: \n
   (tabulated-list-init-header))
 
 ;; ------------------------------------------------------------
-;;* Tramp methods
+;;; Tramp methods
 
 (autoload 'tramp-dump-connection-properties "tramp-cache")
 (defvar tramp-cache-data)
