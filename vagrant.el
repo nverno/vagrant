@@ -92,7 +92,7 @@ locating vagrant root directory for project."
 
 (defsubst vagrant-list-boxes ()
   "List of vagrant boxes in `vagrant-root'."
-  (when-let ((root (vagrant-locate-vagrantfile)))
+  (when-let* ((root (vagrant-locate-vagrantfile)))
    (let ((dir (expand-file-name ".vagrant/machines/" root)))
      (delq nil (directory-files dir nil "^[^.]")))))
 
@@ -152,6 +152,8 @@ locating vagrant root directory for project."
 ;;; Note: windows needs process-coding utf-8-unix otherwise there is a
 ;;  trailing '\r' in ssh
 
+(defvar vagrant-buffer "*vagrant*")
+
 (defvar vagrant-menu
   (vagrant-make-menu vagrant-commands "Vagrant" "vagrant-"
     vagrant-global-commands
@@ -189,7 +191,8 @@ Commands:\n
   nil
   :keymap vagrant-mode-map
   :lighter "Vagrant"
-  (set-buffer-process-coding-system 'utf-8-unix 'utf-8-unix)
+  (set-process-coding-system
+   (get-buffer-process (current-buffer)) 'utf-8-unix 'utf-8-unix)
   (remove-hook 'comint-input-filter-functions 'shell-directory-tracker t)
   (add-hook 'comint-preoutput-filter-functions 'vagrant-output-filter nil t)
   (setq-local comint-process-echoes nil)
@@ -198,10 +201,10 @@ Commands:\n
 ;; not using
 (defun vagrant-proc-sentinel (p s)
   (message "%s finished with status: '%s'" p s)
-  (pop-to-buffer "*Vagrant*")
-  (when (get-buffer-process (current-buffer))
+  (pop-to-buffer vagrant-buffer)
+  (when-let* ((buff (get-buffer-process (current-buffer))))
     (shell-mode)
-    (set-buffer-process-coding-system 'utf-8-unix 'utf-8-unix))
+    (set-process-coding-system buff 'utf-8-unix 'utf-8-unix))
   (vagrant-mode)
   (goto-char (point-max)))
 
@@ -439,6 +442,7 @@ Commands: \n
 
 ;; (eval-after-load 'tramp
 ;;   '(progn
+
 ;;      (vagrant-tramp-add-plink-method)
 ;;      (tramp-set-completion-function vagrant-tramp-method
 ;;                                     vagrant-tramp-completion-function-alist)))
