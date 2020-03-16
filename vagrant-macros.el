@@ -50,13 +50,13 @@ is not searched for."
                          (when (not (string= vargs ""))
                            (format " (with default arguments: %s)" vargs))
                          ". Single prefix prompts for box (non-global commands), "
-                         "double prefix prompts for additional arguments.")))
-    `(defun ,fn (&optional dir box args)
+                         "double prefix prompts for additional arguments."))
+         (fn-args (if nosearch '(args) '(dir box args))))
+    `(defun ,fn (&optional ,@fn-args)
        ,fn-doc
        (interactive)
        (,(if nosearch 'let 'let*)
-        (cons
-         ,@(when (not nosearch)
+        (,@(when (not nosearch)
              '((default-directory
                  (or dir 
                      (file-name-directory (vagrant-locate-vagrantfile))))

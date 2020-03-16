@@ -1,4 +1,4 @@
-;;; vagrant --- Utilities to manage vagrant from emacs.
+;;; vagrant --- Utilities to manage vagrant from emacs.  -*- lexical-binding: t; -*-
 
 ;; This is free and unencumbered software released into the public domain.
 
@@ -23,20 +23,20 @@
 ;; Floor, Boston, MA 02110-1301, USA.
 
 ;;; Commentary:
-
+;;
 ;; [![Build Status](https://travis-ci.org/nverno/vagrant.svg?branch=master)](https://travis-ci.org/nverno/vagrant)
-
+;;
 ;; Manages vagrant boxes from emacs.
-
+;;
 ;; Commands are defined for all vagrant command-line commmands through the corresponding
 ;; macros in `vagrant-macros.el'.  There are methods for TRAMP and vagrant ssh.
-
+;;
 ;;  Also defines two modes,
 ;; - vagrant-mode:
 ;;   For vagrant-ssh as well as other vagrant commands.
 ;; - vagrant-machine-mode:
 ;;   List interface to available boxes adapted from [emacs-pe](https://github.com/emacs-pe/vagrant.el)
-
+;;
 ;;; Code:
 
 (eval-when-compile
@@ -272,7 +272,7 @@ Commands:\n
 using retrieval RET-FUN."
   (cl-flet ((fn (intern (concat "vagrant-machine-" match-fun)))
             (fn2 (intern (concat "vagrant-machine-" ret-fun))))
-   (cl-loop for (id . dat) in vagrant-machines
+   (cl-loop for (_id . dat) in vagrant-machines
       when (string= (downcase value) (downcase (fn dat)))
       return (fn2 dat))))
 
