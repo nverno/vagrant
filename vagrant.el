@@ -54,17 +54,17 @@
       "provision" "rdp" "reload" "resume" "rsync" "rsync-auto" "snapshot"
       "share" "ssh" "ssh-config" "status" "suspend" "up")
     "List of vagrant commands to call interactively."
-    :type 'sexp
+    :type '(repeat string)
     :group 'vagrant)
 
   (defcustom vagrant-global-commands
     '("box" "global-status" "help" "init" "list-commands" "version")
     "List of vagrant commands to call interactively that don't require 
 locating vagrant root directory for project."
-    :type 'sexp
+    :type '(repeat string)
     :group 'vagrant))
 
-(defcustom vagrant-completing-read 'ido-completing-read
+(defcustom vagrant-completing-read 'completing-read
   "Completion engine to use."
   :type 'function
   :group 'vagrant)
@@ -144,7 +144,7 @@ locating vagrant root directory for project."
 
 ;;;###autoload
 (defun vagrant-vagrant ()
-  "Launch `vagrant-mode'"
+  "Launch `vagrant-mode'."
   (interactive)
   (vagrant-global-status))
 
@@ -177,7 +177,7 @@ locating vagrant root directory for project."
     km))
 
 (defun vagrant-output-filter (string)
-  "Add a prompt indicator"
+  "Add a prompt indicator."
   (concat string "> "))
 
 (declare-function shell-dirtrack-mode "shell")
@@ -186,11 +186,11 @@ locating vagrant root directory for project."
 
 (define-minor-mode vagrant-mode
   "Vagrant minor mode.
-Commands:\n
-\\{vagrant-mode-map}"
-  nil
+
+Commands:
+\\<vagrant-mode-map>"
   :keymap vagrant-mode-map
-  :lighter "Vagrant"
+  :lighter " Vagrant"
   (set-process-coding-system
    (get-buffer-process (current-buffer)) 'utf-8-unix 'utf-8-unix)
   (remove-hook 'comint-input-filter-functions 'shell-directory-tracker t)
@@ -200,7 +200,7 @@ Commands:\n
 
 ;; not using
 (defun vagrant-proc-sentinel (p s)
-  (message "%s finished with status: '%s'" p s)
+  (message "%s finished with status: %s" p s)
   (pop-to-buffer vagrant-buffer)
   (when-let* ((buff (get-buffer-process (current-buffer))))
     (shell-mode)
@@ -217,7 +217,7 @@ Commands:\n
 
 (defconst vagrant-global-re
   "^\\([[:xdigit:]]+\\)\\s-*\\([[:alnum:]_]+\\)\\s-*\\(\\w+\\)\\s-*\\(\\w+\\)\\s-*\\(.*\\)"
-  "Regexp to match `vagrant global-status' output.")
+  "Regexp to match vagrant global-status output.")
 
 (defvar vagrant-machines nil)
 (defun vagrant--machines (&optional refetch)
@@ -330,9 +330,10 @@ using retrieval RET-FUN."
   "Vagrant machine mode map")
 
 (define-derived-mode vagrant-machine-mode tabulated-list-mode "Vagrant Boxes"
-  "List of vagrant machines.\n
-Commands: \n
-\\{vagrant-machine-mode-map}"
+  "List of vagrant machines.
+
+Commands:
+\\<vagrant-machine-mode-map>"
   (setq tabulated-list-format [("id" 7 nil)
                                ("name" 10 nil)
                                ("provider" 10 nil)
@@ -388,7 +389,7 @@ Commands: \n
                     (remhash key tramp-cache-data)))
            tramp-cache-data)
   (setq tramp-cache-data-changed t)
-  (when (eq current-prefix-arg '(4))
+  (when (equal current-prefix-arg '(4))
     (vagrant-tramp-blank-config t))
   (tramp-dump-connection-properties))
 

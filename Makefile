@@ -1,5 +1,5 @@
 emacs ?= emacs
-wget ?= wget
+wget  ?= wget
 
 .PHONY: clean distclean
 all: 

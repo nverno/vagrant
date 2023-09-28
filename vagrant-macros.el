@@ -46,11 +46,12 @@ is not searched for."
                                         vagrant-default-args " "))
                         vagrant-default-args)
                   ""))
-         (fn-doc (concat "Call 'vagrant " cmd "'"
-                         (when (not (string= vargs ""))
-                           (format " (with default arguments: %s)" vargs))
-                         ". Single prefix prompts for box (non-global commands), "
-                         "double prefix prompts for additional arguments."))
+         (fn-doc
+          (concat (format "Call vagrant %s" cmd)
+                  (when (not (string= vargs ""))
+                    (format " (with default arguments: %s)" vargs))
+                  ".\nSingle prefix prompts for box (non-global commands).\n"
+                  "Double prefix prompts for additional arguments."))
          (fn-args (if nosearch '(args) '(dir box args))))
     `(defun ,fn (&optional ,@fn-args)
        ,fn-doc
@@ -96,7 +97,7 @@ is not searched for."
   (let* ((cmd (eval cmd))
          (fn (intern (concat "vagrant-machine-" cmd)))
          (fn1 (intern (concat "vagrant-" cmd)))
-         (fn-doc (concat "Call 'vagrant " cmd "' on box in tabulated list.")))
+         (fn-doc (concat "Call vagrant " cmd " on box in tabulated list.")))
     `(defun ,fn ()
        ,fn-doc
        (interactive)
