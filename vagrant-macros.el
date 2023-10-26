@@ -1,4 +1,4 @@
-;;; vagrant-macros --- Macros to create interactive vagrant commands. -*- no-byte-compile: t -*-
+;;; vagrant-macros --- Macros to create interactive vagrant commands. -*- no-byte-compile: t; lexical-binding: t; -*-
 
 ;; Author: Noah Peart <noah.v.peart@gmail.com>
 ;; Copyright (C) 2016, Noah Peart, all rights reserved.
